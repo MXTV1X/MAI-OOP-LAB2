@@ -1,4 +1,4 @@
-#pragma ones
+#pragma once
 
 #include <string>
 #include <stdexcept>
@@ -8,7 +8,6 @@ private:
     unsigned char* digits;
     size_t size;
     
-    // Вспомогательные методы
     void initFromString(const std::string& str);
     void removeLeadingZeros();
     int compare(const Decimal& other) const;

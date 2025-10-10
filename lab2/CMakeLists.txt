@@ -14,7 +14,7 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(googletest)
 
-add_library(Decimal STATIC source/lab2.cpp)
+add_library(Decimal STATIC src/lab2.cpp)
 
 add_executable(RES main.cpp)
 
