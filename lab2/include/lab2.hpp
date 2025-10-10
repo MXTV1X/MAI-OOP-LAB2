@@ -1,41 +1,48 @@
 #pragma once
-
+#include <exception>
+#include <vector>
 #include <string>
-#include <stdexcept>
 
-class Decimal {
-private:
-    unsigned char* digits;
-    size_t size;
-    
-    void initFromString(const std::string& str);
-    void removeLeadingZeros();
-    int compare(const Decimal& other) const;
+using std::string;
+using std::vector;
 
+class Decimal{
 public:
+    // === КОНСТРУКТОРЫ И ДЕСТРУКТОРЫ ===
     Decimal();
-    Decimal(const size_t& n, unsigned char digit = 0);
-    Decimal(const std::initializer_list<unsigned char>& digitsList);
-    Decimal(const std::string& str);
-    Decimal(const Decimal& other);
-    Decimal(Decimal&& other) noexcept;
-    virtual ~Decimal() noexcept;
+    Decimal(const size_t & n, unsigned char value = 0);
+    Decimal(const std::initializer_list<unsigned char> &t);
+    Decimal(const string &t); // создаёт объект из строки
     
-    size_t getSize() const;
-    unsigned char getDigit(size_t index) const;
-    
-    Decimal add(const Decimal& other) const;
-    Decimal subtract(const Decimal& other) const;
-    
-    bool equals(const Decimal& other) const;
-    bool lessThan(const Decimal& other) const;
-    bool greaterThan(const Decimal& other) const;
+    Decimal(const Decimal& other); // конструктор копирования
+    Decimal(Decimal&& other) noexcept; // конструктор перемещения
+    virtual ~Decimal() noexcept; // деструктор
 
+    // === АРИФМЕТИЧЕСКИЕ ОПЕРАЦИИ ===
+    Decimal add(const Decimal& other) const;
+    Decimal sub(const Decimal& other) const;
+    Decimal copy(const Decimal& other) const;
+
+    // === АРИФМЕТИЧЕСКИЕ ОПЕРАЦИИ С ПРИСВАИВАНИЕМ ===
     Decimal addAssign(const Decimal& other) const;
-    Decimal subtractAssign(const Decimal& other) const;
+    Decimal subAssign(const Decimal& other) const;
+
+    // === ОПЕРАЦИИ СРАВНЕНИЯ ===
+    bool EQ(const Decimal& other) const;
+    bool LT(const Decimal& other) const;
+    bool GT(const Decimal& other) const;
+
+    string toString() const;
     
-    std::string toString() const;
-    
-    Decimal& operator=(const Decimal& other);
-    Decimal& operator=(Decimal&& other) noexcept;
+    // === ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ===
+    size_t size() const { return digits.size(); }
+    unsigned char operator[](size_t index) const { return digits[index]; }
+
+private:
+    // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ САМОГО КЛАССА ===
+    vector<unsigned char> digits;
+    void removeZeros();
+    unsigned char getDigitOrZero(size_t i) const;
+    unsigned char charToDigit(char c) const;
+    unsigned char digitToChar(unsigned char d) const;
 };

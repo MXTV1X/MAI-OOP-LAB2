@@ -1,226 +1,169 @@
-#include "../include/lab2.hpp"
+#include <iostream>
+#include <stdexcept>
 #include <algorithm>
-#include <cstring>
+#include "../include/lab2.hpp"
 
-Decimal::Decimal() : digits(new unsigned char[1]{0}), size(1) {}
-
-Decimal::Decimal(const size_t& n, unsigned char digit) : size(n) {
-    if (digit > 9) {
-        throw std::invalid_argument("Digit must be between 0 and 9");
-    }
-    digits = new unsigned char[n];
-    std::fill(digits, digits + n, digit);
+Decimal::Decimal() {
+    digits.push_back(0);
 }
 
-Decimal::Decimal(const std::initializer_list<unsigned char>& digitsList) : size(digitsList.size()) {
-    digits = new unsigned char[size];
-    size_t i = 0;
-    for (auto digit : digitsList) {
-        if (digit > 9) {
-            delete[] digits;
-            throw std::invalid_argument("Digit must be between 0 and 9");
+Decimal::Decimal(const size_t & n, unsigned char value) : digits(n, value) {
+    if (value > 9){
+        throw std::invalid_argument("Цифра не может быть больше 9");
+    }
+    removeZeros();
+}
+
+Decimal::Decimal(const std::initializer_list<unsigned char> &t) {
+    for (auto it = t.begin(); it != t.end(); ++it){
+        if (*it > 9){
+            throw std::invalid_argument("Некорректная цифра (должна быть от 0 до 9)");
         }
-        digits[i++] = digit;
+        digits.push_back(*it);
     }
+    removeZeros();
 }
 
-void Decimal::initFromString(const std::string& str) {
-    if (str.empty()) {
-        size = 1;
-        digits = new unsigned char[1]{0};
-        return;
-    }
-    
-    size = str.length();
-    digits = new unsigned char[size];
-    
-    for (size_t i = 0; i < size; ++i) {
-        char c = str[size - 1 - i];
-        if (c < '0' || c > '9') {
-            delete[] digits;
-            throw std::invalid_argument("String must contain only digits");
-        }
-        digits[i] = c - '0';
+Decimal::Decimal(const string& t){
+    if (t.empty()){
+        throw std::invalid_argument("Пустая строка");
     }
     
-    removeLeadingZeros();
+    for (auto it = t.rbegin(); it != t.rend(); ++it){ // начинаем с младших разрядов
+        digits.push_back(charToDigit(*it));
+    }
+    removeZeros();
 }
 
-Decimal::Decimal(const std::string& str) {
-    initFromString(str);
+Decimal::Decimal(const Decimal &other) = default;
+Decimal::Decimal(Decimal&& other) noexcept = default;
+Decimal::~Decimal() noexcept = default;
+
+void Decimal::removeZeros(){
+    while(digits.size() > 1 && digits.back() == 0){
+        digits.pop_back();
+    }
 }
 
-Decimal::Decimal(const Decimal& other) : size(other.size) {
-    digits = new unsigned char[size];
-    std::copy(other.digits, other.digits + size, digits);
+unsigned char Decimal::charToDigit(char c) const{
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    }
+    throw std::invalid_argument("Недопустимый символ для десятичного числа");
 }
 
-Decimal::Decimal(Decimal&& other) noexcept : digits(other.digits), size(other.size) {
-    other.digits = nullptr;
-    other.size = 0;
+unsigned char Decimal::digitToChar(unsigned char d) const{
+    if (d > 9){
+        throw std::invalid_argument("Цифра больше 9");
+    }
+    return '0' + d;
 }
 
-Decimal::~Decimal() noexcept {
-    delete[] digits;
+unsigned char Decimal::getDigitOrZero(size_t i) const{
+    return i < digits.size() ? digits[i] : 0;
 }
 
-void Decimal::removeLeadingZeros() {
-    if (size == 1) return;
+string Decimal::toString() const{
+    if (digits.empty()){
+        return "0";
+    }
+    string res;
+    res.reserve(digits.size());
     
-    size_t newSize = size;
-    while (newSize > 1 && digits[newSize - 1] == 0) {
-        --newSize;
+    // начинаем с последнего элемента (старшей цифры)
+    for (int i = static_cast<int>(digits.size()) - 1; i >= 0; --i){
+        res += digitToChar(digits[i]);
     }
-    
-    if (newSize != size) {
-        unsigned char* newDigits = new unsigned char[newSize];
-        std::copy(digits, digits + newSize, newDigits);
-        delete[] digits;
-        digits = newDigits;
-        size = newSize;
-    }
+    return res;
 }
 
-int Decimal::compare(const Decimal& other) const {
-    if (size != other.size) {
-        return size > other.size ? 1 : -1;
-    }
-    
-    for (size_t i = size; i > 0; --i) {
-        size_t idx = i - 1;
-        if (digits[idx] != other.digits[idx]) {
-            return digits[idx] > other.digits[idx] ? 1 : -1;
-        }
-    }
-    
-    return 0;
+Decimal Decimal::copy(const Decimal& other) const{
+    return other;
 }
 
-size_t Decimal::getSize() const {
-    return size;
-}
-
-unsigned char Decimal::getDigit(size_t index) const {
-    if (index >= size) {
-        throw std::out_of_range("Index out of range");
-    }
-    return digits[index];
-}
-
-Decimal Decimal::add(const Decimal& other) const {
-    size_t maxSize = std::max(size, other.size);
-    size_t resultSize = maxSize + 1;
-    unsigned char* resultDigits = new unsigned char[resultSize]{0};
+Decimal Decimal::add(const Decimal& other) const{
+    Decimal res;
+    res.digits.clear(); // очищаем цифру по умолчанию
     
     unsigned char carry = 0;
-    for (size_t i = 0; i < maxSize; ++i) {
-        unsigned char sum = carry;
-        if (i < size) sum += digits[i];
-        if (i < other.size) sum += other.digits[i];
-        
-        resultDigits[i] = sum % 10;
+    size_t i = 0;
+    size_t maxSize = std::max(digits.size(), other.digits.size());
+    
+    while (i < maxSize || carry){
+        unsigned char sum = getDigitOrZero(i) + other.getDigitOrZero(i) + carry;
+        res.digits.push_back(sum % 10);
         carry = sum / 10;
+        i++;
     }
-    
-    if (carry > 0) {
-        resultDigits[maxSize] = carry;
-    } else {
-        resultSize = maxSize;
-    }
-    
-    Decimal result;
-    delete[] result.digits;
-    result.digits = resultDigits;
-    result.size = resultSize;
-    result.removeLeadingZeros();
-    
-    return result;
+    res.removeZeros();
+    return res;
 }
 
-Decimal Decimal::subtract(const Decimal& other) const {
-    if (lessThan(other)) {
-        throw std::invalid_argument("Result would be negative");
+Decimal Decimal::sub(const Decimal& other) const{
+    if (this->LT(other)){
+        throw std::invalid_argument("Результат вычитания отрицателен");
     }
-    
-    size_t resultSize = size;
-    unsigned char* resultDigits = new unsigned char[resultSize]{0};
+
+    Decimal res;
+    res.digits.clear(); // очищаем цифру по умолчанию
     
     unsigned char borrow = 0;
-    for (size_t i = 0; i < size; ++i) {
-        int diff = digits[i] - borrow;
-        if (i < other.size) {
-            diff -= other.digits[i];
-        }
-        
-        if (diff < 0) {
+    size_t i = 0;
+    size_t maxSize = std::max(digits.size(), other.digits.size());
+    
+    while(i < maxSize){
+        int diff = int(getDigitOrZero(i)) - int(other.getDigitOrZero(i)) - borrow;
+        if (diff < 0){
             diff += 10;
             borrow = 1;
-        } else {
+        }
+        else{
             borrow = 0;
         }
-        
-        resultDigits[i] = diff;
+        res.digits.push_back(static_cast<unsigned char>(diff));
+        i++;
+    }
+    res.removeZeros();
+    return res;
+}
+
+// Сложение с присваиванием
+Decimal Decimal::addAssign(const Decimal& other) const{
+    return this->add(other);
+}
+
+// Вычитание с присваиванием
+Decimal Decimal::subAssign(const Decimal& other) const{
+    return this->sub(other);
+}
+
+bool Decimal::EQ(const Decimal& other) const{
+    if (digits.size() != other.digits.size()){
+        return false;
     }
     
-    Decimal result;
-    delete[] result.digits;
-    result.digits = resultDigits;
-    result.size = resultSize;
-    result.removeLeadingZeros();
-    
-    return result;
-}
-
-bool Decimal::equals(const Decimal& other) const {
-    return compare(other) == 0;
-}
-
-bool Decimal::lessThan(const Decimal& other) const {
-    return compare(other) < 0;
-}
-
-bool Decimal::greaterThan(const Decimal& other) const {
-    return compare(other) > 0;
-}
-
-Decimal Decimal::addAssign(const Decimal& other) const {
-    return add(other);
-}
-
-Decimal Decimal::subtractAssign(const Decimal& other) const {
-    return subtract(other);
-}
-
-std::string Decimal::toString() const {
-    if (size == 0) return "0";
-    
-    std::string result;
-    result.reserve(size);
-    
-    for (size_t i = size; i > 0; --i) {
-        result += '0' + digits[i - 1];
+    for (size_t i = 0; i < digits.size(); i++){
+        if (digits[i] != other.digits[i]){
+            return false;
+        }
     }
-    
-    return result;
+    return true;
 }
 
-Decimal& Decimal::operator=(const Decimal& other) {
-    if (this != &other) {
-        delete[] digits;
-        size = other.size;
-        digits = new unsigned char[size];
-        std::copy(other.digits, other.digits + size, digits);
+bool Decimal::LT(const Decimal& other) const{
+    if (digits.size() != other.digits.size()){
+        return digits.size() < other.digits.size();
     }
-    return *this;
+
+    // сравниваем с старших разрядов
+    for (int i = static_cast<int>(digits.size()) - 1; i >= 0; i--){
+        if (digits[i] != other.digits[i]){
+            return digits[i] < other.digits[i];
+        }
+    }
+    return false; // числа равны
 }
 
-Decimal& Decimal::operator=(Decimal&& other) noexcept {
-    if (this != &other) {
-        delete[] digits;
-        digits = other.digits;
-        size = other.size;
-        other.digits = nullptr;
-        other.size = 0;
-    }
-    return *this;
+bool Decimal::GT(const Decimal& other) const{
+    return !EQ(other) && !LT(other);
 }
